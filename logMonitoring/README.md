@@ -16,12 +16,6 @@ Log Files → S3 Bucket → SQS Queue → Lambda Function → SNS Alert + Backup
 - **Backup Storage**: Archives processed logs to a separate S3 bucket
 - **Free Tier Friendly**: Uses only AWS free-tier services
 
-## Prerequisites
-
-- AWS Account with appropriate permissions
-- Python 3.9+ runtime
-- AWS CLI configured (optional)
-
 ## AWS Services Used
 
 - **S3**: Log storage and backup
@@ -90,42 +84,12 @@ Lambda execution role needs:
     ]
 }
 ```
-
-## Configuration
-
-Update these variables in `logmonitoring.py`:
-
-```python
-SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:YOUR_ACCOUNT:logAlert'
-SOURCE_BUCKET = 'incoming-logs-dev'
-BACKUP_BUCKET = 'backup-for-logs-dev'
-ALERT_KEYWORDS = ['ERROR', 'Timeout', 'Not Found', '500', '404']
-```
-
 ## Usage
 
 1. Upload log files to `incoming-logs-dev` bucket
 2. Lambda automatically processes the files
 3. If errors are found, you'll receive an email alert
 4. Processed logs are backed up to `backup-for-logs-dev`
-
-## Testing
-
-### Test Event (SQS Format)
-```json
-{
-  "Records": [
-    {
-      "messageId": "test-message-id",
-      "receiptHandle": "test-receipt-handle",
-      "body": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"eventName\":\"ObjectCreated:Put\",\"s3\":{\"bucket\":{\"name\":\"incoming-logs-dev\"},\"object\":{\"key\":\"test-log.txt\"}}}]}",
-      "attributes": {
-        "ApproximateReceiveCount": "1"
-      }
-    }
-  ]
-}
-```
 
 ### Sample Log File
 ```
@@ -136,18 +100,9 @@ ALERT_KEYWORDS = ['ERROR', 'Timeout', 'Not Found', '500', '404']
 ```
 
 ## Monitoring
-
-- Check CloudWatch Logs for Lambda execution details
 - Monitor SQS queue for message processing
 - Verify email delivery through SNS
 
-## Cost Optimization
-
-This solution is designed for AWS Free Tier:
-- Lambda: 1M free requests/month
-- S3: 5GB free storage
-- SQS: 1M free requests/month
-- SNS: 1,000 free email notifications/month
 
 ## Troubleshooting
 
@@ -157,26 +112,3 @@ This solution is designed for AWS Free Tier:
 2. **No Email Alerts**: Verify SNS topic subscription
 3. **SQS Messages Not Processing**: Check Lambda trigger configuration
 4. **Files Not Found**: Ensure test files exist in S3
-
-### Debug Steps
-
-1. Check CloudWatch Logs for detailed error messages
-2. Verify S3 event notifications are configured
-3. Test SNS topic manually
-4. Validate IAM role permissions
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For issues and questions, please create an issue in the repository or contact the DevOps team.
