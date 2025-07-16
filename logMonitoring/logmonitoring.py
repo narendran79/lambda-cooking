@@ -7,7 +7,7 @@ s3_client = boto3.client('s3')
 sns_client = boto3.client('sns')
 
 # SNS topic ARN for sending alerts
-SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:039612876144:logAlert'
+SNS_TOPIC_ARN = '<your-sns-arn>'
 
 # Keywords to look for in the logs that indicate potential issues
 ALERT_KEYWORDS = ['ERROR', 'Timeout', 'Not Found', '500', '404']
