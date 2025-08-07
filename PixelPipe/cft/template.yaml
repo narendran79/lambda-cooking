@@ -45,7 +45,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - sns:Publish
-                Resource: !Ref ImageMetadataTopic
+                Resource: !Ref ImageUploadSNSTopic
 
   ImageProcessingLambda:
     Type: AWS::Lambda::Function
@@ -87,7 +87,6 @@ Resources:
         - AttributeName: image_id
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
-      TableName: image-metadata-table
 
   ImageUploadSNSTopic:
     Type: AWS::SNS::Topic
