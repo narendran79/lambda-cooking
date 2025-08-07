@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "A Real-Time Serverless Image Upload and Processing Pipeline on AWS"
+
+Resources:
+  ImageUploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "image-storage-space-dev"
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt ImageProcessingLambda.Arn
+
+  ImageProcessingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: image-processing-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: image-processing-role-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:putLogEvents
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !GetAtt ImageUploadBucket.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt ImageMetadataTable.Arn
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref ImageMetadataTopic
+
+  ImageProcessingLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: image-processing-lambda
+      Handler: image-processing-lambda.lambda_handler
+      Runtime: python3.9
+      Timeout: 30
+      Role: !GetAtt ImageProcessingRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+
+          def handler(event, context):
+              print("Event received:", event)
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Image processed successfully')
+              }
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ImageProcessingLambda.Arn
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt ImageUploadBucket.Arn
+
+  ImageMetadataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: image-metadata-table
+      AttributeDefinitions:
+        - AttributeName: image_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: image_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      TableName: image-metadata-table
+
+  ImageUploadSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: image-metadata-topic
+
+  ImageUploadTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref ImageUploadSNSTopic
+      Endpoint: "narennarendran797@gmail.com"
+      Protocol: email
+
+Outputs:
+  S3BucketName:
+    Description: Name of the S3 bucket for image uploads
+    Value: !Ref ImageUploadBucket
+
+  LambdaFunctionName:
+    Description: Name of the Lambda function for image processing
+    Value: !Ref ImageProcessingLambda
+
+  DynamoDBTableName:
+    Description: Name of the DynamoDB table for image metadata
+    Value: !Ref ImageMetadataTable
+
+  SNSTopicName:
+    Description: Name of the SNS topic for upload notifications
+    Value: !Ref ImageUploadSNSTopic
+  
