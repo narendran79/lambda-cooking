@@ -18,20 +18,40 @@ SOURCE_BUCKET = 'incoming-logs-dev'
 # Backup bucket to store processed logs
 BACKUP_BUCKET = 'backup-for-logs-dev'
 
-def alert_email(count, filename):
+def alert_email(error_details, filename):
     """
-    Sends an alert email via SNS if error keywords are found in the logs.
+    Sends an alert email via SNS with tabular format showing error breakdown.
     """
-    email_message = f'''Alert From Logs !!!
+    # Create table header
+    table = "\n" + "="*60 + "\n"
+    table += f"{'KEYWORD':<15} | {'COUNT':<10} | {'PERCENTAGE':<10}\n"
+    table += "-"*60 + "\n"
+    
+    total_errors = sum(error_details.values())
+    
+    # Add table rows
+    for keyword, count in error_details.items():
+        if count > 0:
+            percentage = round((count/total_errors)*100, 1)
+            table += f"{keyword:<15} | {count:<10} | {percentage}%\n"
+    
+    table += "="*60 + "\n"
+    table += f"{'TOTAL ERRORS':<15} | {total_errors:<10} | 100.0%\n"
+    table += "="*60
+    
+    email_message = f'''🚨 LOG ALERT NOTIFICATION 🚨
 
-This email is to inform you that we have received some error logs. Please check and resolve the issue.
 File: {filename}
-Count of keywords are appeared in the logs: {count}
+Timestamp: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+Total Error Count: {total_errors}
 
-Keywords can be ERROR, Timeout, Not Found, 500, 404
+ERROR BREAKDOWN:{table}
+
+Please investigate and resolve these issues immediately.
+
 Regards,
-DevOps Team
-'''
+DevOps Team'''
+    
     response = sns_client.publish(TopicArn=SNS_TOPIC_ARN, Message=email_message)
     print("Alert sent for error logs")
     return response
@@ -49,10 +69,18 @@ def scan_payload(payload, filename):
     """
     Scans the log content for alert keywords and triggers an alert if any are found.
     """
-    count = sum(1 for word in ALERT_KEYWORDS if word in payload)
-    if count > 0:
-        alert_email(count, filename)
-        print("Alert triggered due to error keywords in logs")
+    error_details = {}
+    
+    # Count occurrences of each keyword
+    for keyword in ALERT_KEYWORDS:
+        count = payload.count(keyword)
+        error_details[keyword] = count
+    
+    total_errors = sum(error_details.values())
+    
+    if total_errors > 0:
+        alert_email(error_details, filename)
+        print(f"Alert triggered: {total_errors} error keywords found in logs")
 
 def lambda_handler(event, context):
     """
